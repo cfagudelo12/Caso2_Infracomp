@@ -3,10 +3,19 @@ package puntoAtencion;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.security.Certificate;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Date;
+
+import javax.security.auth.x500.X500Principal;
+
+import org.bouncycastle.x509.X509V1CertificateGenerator;
 
 public class PuntoAtencion {
 	
@@ -54,7 +63,9 @@ public class PuntoAtencion {
 		in = new BufferedReader(new InputStreamReader(canal.getInputStream()));
 	}
 	
+	@SuppressWarnings("deprecation")
 	public void procesar() throws Exception {
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 		conectar();
 		String linea = "";
 		out.println(INFORMAR);
@@ -64,10 +75,25 @@ public class PuntoAtencion {
 		}
 		out.println(ALGORITMOS+":"+RSA+":"+algoritmoHMAC);
 		linea = in.readLine();
-		if(linea.equals(ERROR)||!linea.equals(OK)) {
+		String[] rta = linea.split(":");
+		if(rta[1].equals(ERROR)||!rta[1].equals(OK)) {
 			throw new Exception("Se produjo un error. Se esperaba: "+OK);
 		}
-		linea = in.readLine();
+		KeyPairGenerator generator = KeyPairGenerator.getInstance(RSA);
+		generator.initialize(1024);
+		KeyPair keyPair = generator.generateKeyPair();
+		X509V1CertificateGenerator  certGen = new X509V1CertificateGenerator();
+        certGen.setSerialNumber(BigInteger.valueOf(System.currentTimeMillis()));
+        certGen.setNotBefore(new Date(System.currentTimeMillis() - 50000));
+        certGen.setNotAfter(new Date(System.currentTimeMillis() + 50000));
+        certGen.setIssuerDN(new X500Principal("CN=Test Certificate"));
+        certGen.setSubjectDN(new X500Principal("CN=Test Certificate"));
+        certGen.setPublicKey(keyPair.getPublic());
+        certGen.setSignatureAlgorithm("SHA256WithRSAEncryption");
+        X509Certificate cert = certGen.generateX509Certificate(keyPair.getPrivate(), "BC");
+        out.println(Math.random()*1000+":"+CERTPA);
+        out.println(cert.getEncoded());
+        linea = in.readLine();
 	}
 	
 	public static void main(String[] args) {
