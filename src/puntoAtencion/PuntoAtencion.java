@@ -98,8 +98,15 @@ public class PuntoAtencion {
 	}
 
 	public void procesar() throws Exception {
+		//---------------------------------------
+		//Configuración
+		//---------------------------------------
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 		conectar();
+		
+		//---------------------------------------
+		//Etapa 1
+		//---------------------------------------
 		String linea = "";
 		out.println(INFORMAR);
 		linea = in.readLine();
@@ -113,6 +120,9 @@ public class PuntoAtencion {
 			throw new Exception("Se produjo un error. Se esperaba: "+OK+ " Se recibio: "+linea);
 		}
 
+		//---------------------------------------
+		//Etapa 2
+		//---------------------------------------
 		num1=Math.random()*1000;
 		out.println(num1+":"+CERTPA);
 		canal.getOutputStream().write(generarCertificado().getEncoded());
@@ -138,6 +148,9 @@ public class PuntoAtencion {
 			throw new Exception("Se produjo un error.");
 		}
 
+		//---------------------------------------
+		//Etapa 3
+		//---------------------------------------
 		linea= in.readLine();
 		byte[] bytes= Transformacion.destransformar(linea);
 		Cipher cipher = Cipher.getInstance(RSA);
@@ -162,10 +175,9 @@ public class PuntoAtencion {
 			throw new Exception("Se produjo un error. Se esperaba: "+OK+ " Se recibio: "+linea);
 		}
 
-		//------------------------------
-		//Funciona Hasta esta parte
-		//------------------------------
-		
+		//---------------------------------------
+		//Etapa 4
+		//---------------------------------------		
 		
 		KeyPairGenerator generator = KeyPairGenerator.getInstance(RSA);
 		generator.initialize(1024);
@@ -200,7 +212,12 @@ public class PuntoAtencion {
 		cipheredKey = ArrayUtils.addAll(cipher.doFinal(bytes2),cipher.doFinal(bytes3));
 		cipheredKey = ArrayUtils.addAll(cipheredKey,cipher.doFinal(bytes4));
 		out.println(INIT+":"+Transformacion.transformar(cipheredKey));
+		
 
+		//------------------------------
+		//Funciona Hasta esta parte
+		//------------------------------
+		
 		int num=3;
 		System.out.println(num);
 		envio=ORDENES+":"+num;
