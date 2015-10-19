@@ -3,5 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/bcprov-jdk15on-153.jar"/>
+	<classpathentry kind="lib" path="lib/bcprov-jdk12-140.jar"/>
+	<classpathentry kind="lib" path="lib/apache-commons-lang.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
