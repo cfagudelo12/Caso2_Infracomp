@@ -179,8 +179,8 @@ public class PuntoAtencion {
 			bytes2[i]=bytes[i];
 		}
 		byte[] bytes3= new byte[45];
-		for(int i=117;i<bytes3.length;i++) {
-			bytes3[i]=bytes[i];
+		for(int i=0;i<bytes3.length;i++) {
+			bytes3[i]=bytes[i+117];
 		}
 		byte[] cipheredKey = ArrayUtils.addAll(cipher.doFinal(bytes2),cipher.doFinal(bytes3));		
 		cipher = Cipher.getInstance(RSA);
@@ -190,34 +190,34 @@ public class PuntoAtencion {
 			bytes2[i]=cipheredKey[i];
 		}
 		bytes3= new byte[117];
-		for(int i=117;i<bytes3.length;i++) {
-			bytes3[i]=cipheredKey[i];
+		for(int i=0;i<bytes3.length;i++) {
+			bytes3[i]=cipheredKey[i+117];
 		}
 		byte[] bytes4= new byte[22];
-		for(int i=117;i<bytes4.length;i++) {
-			bytes4[i]=cipheredKey[i];
+		for(int i=0;i<bytes4.length;i++) {
+			bytes4[i]=cipheredKey[i+234];
 		}
 		cipheredKey = ArrayUtils.addAll(cipher.doFinal(bytes2),cipher.doFinal(bytes3));
 		cipheredKey = ArrayUtils.addAll(cipheredKey,cipher.doFinal(bytes4));
 		out.println(INIT+":"+Transformacion.transformar(cipheredKey));
 
-		int num=(int)Math.random()*1000;
+		int num=3;
+		System.out.println(num);
 		envio=ORDENES+":"+num;
 		cipher = Cipher.getInstance(RSA);
-		cipher.init(Cipher.ENCRYPT_MODE, desKey.getPublic());
+		cipher.init(Cipher.ENCRYPT_MODE, publicKeyServidor);
 		cipheredText = cipher.doFinal(envio.getBytes());
-		out.println(cipheredText);
+		out.println(Transformacion.transformar(cipheredText));
 
 		String data=num+"";
 		Mac mac = Mac.getInstance(HMACSHA1);
 		mac.init(desKey.getPublic());
 		byte[] rawHmac = mac.doFinal(data.getBytes());
-		String result = Transformacion.transformar(rawHmac);
-		envio=ORDENES+":"+result;
+		cipheredKey = ArrayUtils.addAll((ORDENES+":").getBytes(),rawHmac);
 		cipher = Cipher.getInstance(RSA);
-		cipher.init(Cipher.ENCRYPT_MODE, desKey.getPublic());
-		cipheredText = cipher.doFinal(envio.getBytes());
-		out.println(cipheredText);
+		cipher.init(Cipher.ENCRYPT_MODE, publicKeyServidor);
+		cipheredText = cipher.doFinal(cipheredKey);
+		out.println(Transformacion.transformar(cipheredText));
 		linea = in.readLine();
 		rta = linea.split(":");
 		if(rta[1].equals(ERROR)||!rta[1].equals(OK)) {
@@ -225,7 +225,6 @@ public class PuntoAtencion {
 		}
 
 	}
-
 
 	public X509Certificate generarCertificado() throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchProviderException, NoSuchAlgorithmException, SignatureException {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
