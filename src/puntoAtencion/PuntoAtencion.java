@@ -25,6 +25,7 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.x500.X500Principal;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -35,7 +36,13 @@ import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.X509Extensions;
+import org.bouncycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.macs.HMac;
+import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.util.encoders.Base64Encoder;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
+
+import sun.misc.BASE64Encoder;
 
 @SuppressWarnings("deprecation")
 public class PuntoAtencion {
@@ -177,64 +184,58 @@ public class PuntoAtencion {
 
 		//---------------------------------------
 		//Etapa 4
-		//---------------------------------------		
+		//---------------------------------------
 		
-		KeyPairGenerator generator = KeyPairGenerator.getInstance(RSA);
-		generator.initialize(1024);
-		KeyPair desKey =generator.generateKeyPair();
-
-		bytes= desKey.getPublic().getEncoded();
+		//Se crea la llave para el HMAC
+		KeyGenerator keygen = KeyGenerator.getInstance(algoritmoHMAC);
+		SecretKey hmacKey = keygen.generateKey();
+		
+		//Se encripta la llave del HMAC con la llave publica del servidor
+		bytes= hmacKey.getEncoded();
 		cipher = Cipher.getInstance(RSA);
 		cipher.init(Cipher.ENCRYPT_MODE, publicKeyServidor);
-		byte[] bytes2= new byte[117];
-		for(int i=0;i<bytes2.length;i++) {
-			bytes2[i]=bytes[i];
-		}
-		byte[] bytes3= new byte[45];
-		for(int i=0;i<bytes3.length;i++) {
-			bytes3[i]=bytes[i+117];
-		}
-		byte[] cipheredKey = ArrayUtils.addAll(cipher.doFinal(bytes2),cipher.doFinal(bytes3));		
+		byte[] cipheredKey = cipher.doFinal(bytes);	
+		
+		//Se encripta la llave del HMAC con la lave privada personal
 		cipher = Cipher.getInstance(RSA);
 		cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPrivate());
-		bytes2= new byte[117];
+		byte[] bytes2= new byte[117];
 		for(int i=0;i<bytes2.length;i++) {
 			bytes2[i]=cipheredKey[i];
 		}
-		bytes3= new byte[117];
+		byte[] bytes3= new byte[11];
 		for(int i=0;i<bytes3.length;i++) {
 			bytes3[i]=cipheredKey[i+117];
 		}
-		byte[] bytes4= new byte[22];
-		for(int i=0;i<bytes4.length;i++) {
-			bytes4[i]=cipheredKey[i+234];
-		}
 		cipheredKey = ArrayUtils.addAll(cipher.doFinal(bytes2),cipher.doFinal(bytes3));
-		cipheredKey = ArrayUtils.addAll(cipheredKey,cipher.doFinal(bytes4));
+		//Se envia la llave del HMAC encriptada
 		out.println(INIT+":"+Transformacion.transformar(cipheredKey));
 		
-
-		//------------------------------
-		//Funciona Hasta esta parte
-		//------------------------------
-		
+		//Se define el numero de ordenes
 		int num=3;
-		System.out.println(num);
-		envio=ORDENES+":"+num;
+		
+		//Se cifran el numero de ordenes y se envia
 		cipher = Cipher.getInstance(RSA);
 		cipher.init(Cipher.ENCRYPT_MODE, publicKeyServidor);
-		cipheredText = cipher.doFinal(envio.getBytes());
+		cipheredText = cipher.doFinal((num+"").getBytes());
 		out.println(Transformacion.transformar(cipheredText));
 
-		String data=num+"";
-		Mac mac = Mac.getInstance(HMACSHA1);
-		mac.init(desKey.getPublic());
-		byte[] rawHmac = mac.doFinal(data.getBytes());
-		cipheredKey = ArrayUtils.addAll((ORDENES+":").getBytes(),rawHmac);
+		//Se hace el hash del numero de ordenes
+		Mac mac = Mac.getInstance(algoritmoHMAC);
+		mac.init(hmacKey);
+		byte[] result = mac.doFinal((""+num).getBytes());
+		BASE64Encoder encoder = new BASE64Encoder();
+		String ordenesHmac = encoder.encode(result);
+		
+		//Se cifra el hash de las ordenes
 		cipher = Cipher.getInstance(RSA);
 		cipher.init(Cipher.ENCRYPT_MODE, publicKeyServidor);
-		cipheredText = cipher.doFinal(cipheredKey);
+		cipheredText = cipher.doFinal(ordenesHmac.getBytes());
+		
+		//Se envia le hash
 		out.println(Transformacion.transformar(cipheredText));
+		
+		//Se espera por el resultado final
 		linea = in.readLine();
 		rta = linea.split(":");
 		if(rta[1].equals(ERROR)||!rta[1].equals(OK)) {
@@ -250,8 +251,8 @@ public class PuntoAtencion {
 
 		certGen.setSerialNumber(BigInteger.valueOf(System.currentTimeMillis()));
 		certGen.setIssuerDN(new X500Principal("CN=Test Certificate"));
-		certGen.setNotBefore(new Date(System.currentTimeMillis() - 30000));
-		certGen.setNotAfter(new Date(System.currentTimeMillis() + 30000));
+		certGen.setNotBefore(new Date(System.currentTimeMillis() - 50000));
+		certGen.setNotAfter(new Date(System.currentTimeMillis() + 50000));
 		certGen.setSubjectDN(new X500Principal("CN=Test Certificate"));
 		certGen.setPublicKey(keyPair.getPublic());
 		certGen.setSignatureAlgorithm("SHA256WithRSAEncryption");
